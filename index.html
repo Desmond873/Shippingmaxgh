@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="shippingmaxgh-logo.PNG">
+  <title>Shippingmaxgh Gold — Secure Shipment Tracking</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="brand-section">
+        <img id="companyLogo" src="shippingmaxgh-logo.PNG" alt="Shippingmaxgh Gold Logo" class="company-logo"
+          onerror="this.style.display='none'; document.getElementById('brandIcon').style.display='block'">
+        <div id="brandIcon" style="display:none; font-size:2.5rem; margin-bottom:0.75rem;">◆</div>
+        <h1>Shippingmaxgh Gold</h1>
+        <div class="brand-divider">
+          <span>Secure Gold Logistics</span>
+        </div>
+      </div>
+
+      <p class="subtitle">Operations Team Portal</p>
+
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="team@aurexgold.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Sign In to Portal</button>
+      </form>
+
+      <div class="auth-links">
+        <p>Need access? <button id="toggleSignUp" class="link-btn">Request an account</button></p>
+      </div>
+
+      <div id="signUpForm" class="auth-form hidden">
+        <h3>Create Team Account</h3>
+
+        <div class="form-group">
+          <label for="signupEmail">Email Address</label>
+          <input
+            type="email"
+            id="signupEmail"
+            name="signupEmail"
+            placeholder="team@aurexgold.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input
+            type="password"
+            id="signupPassword"
+            name="signupPassword"
+            placeholder="Minimum 6 characters"
+            required
+          >
+        </div>
+
+        <button type="button" id="signUpBtn" class="btn btn-primary btn-full">Create Account</button>
+        <button type="button" id="toggleBackToLogin" class="btn btn-secondary btn-full" style="margin-top:0.5rem">← Back to Sign In</button>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <!-- Supabase JS SDK v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    window.onload = function () {
+      const supabaseClient = window.supabase.createClient(
+        CONFIG.supabaseUrl,
+        CONFIG.supabaseAnonKey
+      );
+
+   // Sign out any existing session — login required every visit
+supabaseClient.auth.signOut();
+
+      // Login form
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const messageEl = document.getElementById('message');
+
+        messageEl.className = 'message';
+        messageEl.textContent = 'Authenticating...';
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          messageEl.className = 'message error';
+          messageEl.textContent = `Error: ${error.message}`;
+        } else {
+          messageEl.className = 'message success';
+          messageEl.textContent = 'Access granted. Redirecting to dashboard...';
+          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+        }
+      });
+
+      // Toggle signup
+      document.getElementById('toggleSignUp').addEventListener('click', () => {
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('signUpForm').classList.remove('hidden');
+        document.getElementById('message').textContent = '';
+      });
+
+      document.getElementById('toggleBackToLogin').addEventListener('click', () => {
+        document.getElementById('signUpForm').classList.add('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('message').textContent = '';
+      });
+
+      // Signup form
+      document.getElementById('signUpBtn').addEventListener('click', async () => {
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const messageEl = document.getElementById('message');
+
+        if (password.length < 6) {
+          messageEl.className = 'message error';
+          messageEl.textContent = 'Password must be at least 6 characters.';
+          return;
+        }
+
+        messageEl.textContent = 'Creating account...';
+
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+        if (error) {
+          messageEl.className = 'message error';
+          messageEl.textContent = `Error: ${error.message}`;
+        } else {
+          messageEl.className = 'message success';
+          messageEl.textContent = 'Account created! You may now sign in.';
+          setTimeout(() => {
+            document.getElementById('signUpForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('email').value = email;
+          }, 2000);
+        }
+      });
+    };
+  </script>
+</body>
+</html>

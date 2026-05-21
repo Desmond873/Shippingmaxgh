@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/shippingmaxgh-logo.PNG">
+  <title>Shippingmaxgh Gold — Shipment Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <img src="/shippingmaxgh-logo.PNG" alt="Shippingmaxgh Gold" class="nav-logo"
+          onerror="this.style.display='none'">
+        <span>Shippingmaxgh Gold</span>
+        <span class="brand-diamond">◆</span>
+      </div>
+      <div class="nav-right">
+        <span id="userEmail" class="user-email"></span>
+        <button id="logoutBtn" class="btn btn-secondary">Sign Out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="dashboard">
+
+      <!-- Dashboard Header -->
+      <div class="dashboard-header">
+        <h1>Shipment <span>Tracker</span></h1>
+        <button id="showAddForm" class="btn btn-primary">+ Log New Shipment</button>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card">
+          <div class="stat-number" id="statTotal">—</div>
+          <div class="stat-label">Total Shipments</div>
+        </div>
+        <div class="stat-card orange-top">
+          <div class="stat-number" id="statPending">—</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statTransit">—</div>
+          <div class="stat-label">In Transit</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statDelivered">—</div>
+          <div class="stat-label">Delivered</div>
+        </div>
+      </div>
+
+      <!-- Add Shipment Form (hidden by default) -->
+      <div id="addPackageForm" class="form-card hidden">
+        <h2>Log New Gold Shipment</h2>
+        <p class="form-hint">Reference number will be auto-generated and sent via email</p>
+        <form id="packageForm" class="form-grid">
+          <div class="form-group">
+            <label for="recipientName">Consignee / Recipient</label>
+            <input type="text" id="recipientName" placeholder="e.g., Accra Refinery Ltd." required>
+          </div>
+
+          <div class="form-group">
+            <label for="recipientEmail">Recipient Email</label>
+            <input type="email" id="recipientEmail" placeholder="contact@recipient.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="shipmentType">Shipment Type</label>
+            <select id="shipmentType">
+              <option value="">Select Type</option>
+              <option value="Gold Bullion">Gold Bullion</option>
+              <option value="Gold Coins">Gold Coins</option>
+              <option value="Gold Jewellery">Gold Jewellery</option>
+              <option value="Raw Gold Ore">Raw Gold Ore</option>
+              <option value="Certified Assay Samples">Certified Assay Samples</option>
+              <option value="Other Precious Metals">Other Precious Metals</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="initialStatus">Initial Status</label>
+            <select id="initialStatus" required>
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Out for Delivery">Out for Delivery</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="initialLocation">Current Location / Origin</label>
+            <input type="text" id="initialLocation" placeholder="e.g., Accra Vault, Ghana" required>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Shipment Record</button>
+            <button type="button" id="cancelAddForm" class="btn btn-secondary">Cancel</button>
+          </div>
+        </form>
+        <div id="addFormMessage" class="message"></div>
+      </div>
+
+      <!-- Search and Filter section -->
+      <div class="search-filter-bar">
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search by reference number or consignee name..."
+        >
+        <select id="statusFilter" class="filter-select">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="In Transit">In Transit</option>
+          <option value="Out for Delivery">Out for Delivery</option>
+          <option value="Delivered">Delivered</option>
+        </select>
+        <button id="clearFilters" class="btn btn-secondary">Clear</button>
+      </div>
+
+      <!-- Shipments Table -->
+      <div class="table-wrapper">
+        <table class="packages-table">
+          <thead>
+            <tr>
+              <th>Reference No.</th>
+              <th>Consignee</th>
+              <th>Status</th>
+              <th>Location</th>
+              <th>Last Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="packagesTable">
+            <tr class="loading">
+              <td colspan="6">Loading shipments...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="emptyState" class="empty-state hidden">
+        <p>No shipments on record. <button id="createFirstPackage" class="link-btn">Log your first shipment</button></p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="config.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="email-service.js"></script>
+</body>
+</html>

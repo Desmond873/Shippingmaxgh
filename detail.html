@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/shippingmaxgh-logo.PNG">
+  <title>Shippingmaxgh Gold — Shipment Details</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <img src="/shippingmaxgh-logo.PNG" alt="Shippingmaxgh Gold logo showing the company name Shippingmaxgh Gold with a small diamond symbol; located in the site header" class="nav-logo"
+          onerror="this.style.display='none'">
+        <span>Shippingmaxgh Gold</span>
+        <span class="brand-diamond">◆</span>
+      </div>
+      <div class="nav-right">
+        <span id="userEmail" class="user-email"></span>
+        <button id="logoutBtn" class="btn btn-secondary">Sign Out</button>
+        <span id="publicModeLabel" class="public-mode-label hidden">◆ Public Tracking</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="detail-view" style="padding: 2rem 0;">
+
+      <!-- Back button -->
+      <button id="backBtn" class="btn btn-secondary btn-back">← Back to Dashboard</button>
+
+      <!-- Public Tracking Info -->
+      <div id="publicTrackingInfo" class="info-card hidden">
+        <p><strong>◆ Public Tracking Reference:</strong></p>
+        <p class="info-text">Share this ID with your client: <code id="publicTrackingId"></code></p>
+      </div>
+
+      <!-- Package Header -->
+      <div id="packageHeader" class="package-header hidden">
+        <div class="header-top">
+          <div>
+            <h1 id="trackingNumber"></h1>
+            <p class="recipient-info">
+              <strong>Consignee:</strong> <span id="recipientName"></span>
+              &nbsp;·&nbsp; <span id="recipientEmail"></span>
+            </p>
+          </div>
+          <div class="status-badge" id="currentStatus"></div>
+        </div>
+      </div>
+
+      <!-- Shipment Info Card -->
+      <div id="packageInfo" class="info-card hidden">
+        <div class="info-row">
+          <span class="label">Current Location</span>
+          <span class="value" id="currentLocation"></span>
+        </div>
+        <div class="info-row">
+          <span class="label">Shipment Created</span>
+          <span class="value" id="createdDate"></span>
+        </div>
+        <div class="info-row">
+          <span class="label">Last Updated</span>
+          <span class="value" id="lastUpdatedDate"></span>
+        </div>
+      </div>
+
+      <!-- Update Status Form -->
+      <div id="updateForm" class="form-card hidden">
+        <h2>Update Shipment Status</h2>
+        <form id="statusUpdateForm" class="form-grid">
+          <div class="form-group">
+            <label for="newStatus">New Status</label>
+            <select id="newStatus" required>
+              <option value="">Select status</option>
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Out for Delivery">Out for Delivery</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="newLocation">Current Location</label>
+            <input type="text" id="newLocation" placeholder="e.g., Tema Port, Ghana" required>
+          </div>
+
+          <div class="form-group">
+            <label for="updateNotes">Handler Notes (optional)</label>
+            <textarea id="updateNotes" placeholder="Add any notes, customs clearance info, etc."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Status Update</button>
+            <button type="button" id="cancelUpdate" class="btn btn-secondary">Cancel</button>
+          </div>
+        </form>
+        <div id="updateMessage" class="message"></div>
+      </div>
+
+      <button id="showUpdateForm" class="btn btn-primary" style="margin-bottom: 1.5rem;">Update Status</button>
+
+      <!-- Tracking Timeline -->
+      <div id="timeline" class="timeline hidden">
+        <h2>Shipment Timeline</h2>
+        <div id="timelineItems" class="timeline-items">
+          <!-- Timeline items inserted here -->
+        </div>
+      </div>
+
+      <div id="loadingState" class="loading">Loading shipment details...</div>
+      <div id="errorState" class="message error hidden"></div>
+    </div>
+  </div>
+
+  <!-- Supabase JS SDK v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <script src="config.js"></script>
+  <script src="detail.js"></script>
+  <script src="email-service.js"></script>
+</body>
+</html>
