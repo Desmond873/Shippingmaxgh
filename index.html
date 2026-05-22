@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="shippingmaxgh-logo.PNG">
+  <title>Shippingmaxgh Gold — Secure Shipment Tracking</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="brand-section">
+        <img id="companyLogo" src="shippingmaxgh-logo.PNG" alt="Shippingmaxgh Gold Logo" class="company-logo"
+          onerror="this.style.display='none'; document.getElementById('brandIcon').style.display='block'">
+        <div id="brandIcon" style="display:none; font-size:2.5rem; margin-bottom:0.75rem;">◆</div>
+        <h1>Shippingmaxgh Gold</h1>
+        <div class="brand-divider">
+          <span>Secure Gold Logistics</span>
+        </div>
+      </div>
+
+      <p class="subtitle">Operations Team Portal</p>
+
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="team@shippingmaxgh.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Sign In to Portal</button>
+      </form>
+
+
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <!-- CRITICAL: Load in this EXACT order -->
+  
+  <!-- 1. Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  
+  <!-- 2. EmailJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
+  
+  <!-- 3. Config module -->
+  <script type="module" src="config.js"></script>
+  
+  <!-- 4. App module -->
+  <script type="module" src="app.js"></script>
+  
+  <!-- 5. Page logic -->
+  <script type="module">
+    // Wait for everything to load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initPage, 200);
+    });
+
+    async function initPage() {
+      try {
+        // Verify dependencies
+        if (!window.supabase) {
+          showError('System error: Supabase not loaded');
+          return;
+        }
+        if (!window.CONFIG) {
+          showError('System error: Config not loaded');
+          return;
+        }
+
+        // Create client
+        const client = window.supabase.createClient(
+          window.CONFIG.supabaseUrl,
+          window.CONFIG.supabaseAnonKey
+        );
+        window.supabaseClient = client;
+
+        // Clear session on login page
+        await client.auth.signOut();
+
+        // Setup forms
+        setupLoginForm(client);
+
+        console.log('✅ Login page ready');
+      } catch (error) {
+        console.error('Init error:', error);
+        showError('System error. Please refresh.');
+      }
+    }
+
+    function setupLoginForm(client) {
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const msg = document.getElementById('message');
+
+        if (!email || !password) {
+          showMsg(msg, 'error', 'Please enter email and password');
+          return;
+        }
+
+        showMsg(msg, 'info', 'Authenticating...');
+
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          showMsg(msg, 'error', `Error: ${error.message}`);
+        } else {
+          showMsg(msg, 'success', 'Access granted! Redirecting...');
+          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+        }
+      });
+    }
+
+
+
+    function showMsg(el, type, text) {
+      el.className = `message ${type}`;
+      el.textContent = text;
+    }
+
+    function showError(text) {
+      const msg = document.getElementById('message');
+      if (msg) showMsg(msg, 'error', text);
+    }
+  </script>
+</body>
+</html>
