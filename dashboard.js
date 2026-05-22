@@ -7,29 +7,47 @@ let currentPackages = [];
 let filteredPackages = [];
 
 async function initDashboard() {
+  // Ensure Supabase is initialized
+  if (typeof window.ensureSupabaseInitialized === 'function') {
+    window.ensureSupabaseInitialized();
+  }
+  
   // Use global client from app.js
   const supabase = window.supabaseClient;
   
   if (!supabase) {
-    showError('Application not initialized properly. Please refresh the page.');
+    showError('Application not initialized properly. Please refresh the page. (Missing Supabase client)');
+    console.error('Supabase client not available. Check that config.js and app.js are loaded correctly.');
+    console.error('Expected window.supabaseClient to be initialized.');
     return;
   }
 
-  // Check authentication
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = 'index.html';
-    return;
+  try {
+    // Check authentication
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('Auth error:', error);
+      showError(`Authentication error: ${error.message}`);
+      return;
+    }
+    
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    // Display user email
+    document.getElementById('userEmail').textContent = session.user.email;
+
+    // Setup event listeners
+    setupEventListeners();
+
+    // Load packages
+    await loadPackages();
+  } catch (error) {
+    console.error('Dashboard initialization error:', error);
+    showError(`Initialization error: ${error.message}`);
   }
-
-  // Display user email
-  document.getElementById('userEmail').textContent = session.user.email;
-
-  // Setup event listeners
-  setupEventListeners();
-
-  // Load packages
-  await loadPackages();
 }
 
 function setupEventListeners() {
@@ -239,8 +257,11 @@ async function handleAddPackage(e) {
 
     if (emailResult.success) {
       showMessage(messageEl, 'success', 'Shipment created and notification sent!');
+    } else if (emailResult.requiresAdminAction) {
+      showMessage(messageEl, 'warning', 'Shipment created! ⚠️ Email failed - Admin must reconnect Gmail in EmailJS');
+      console.error('Admin action required:', emailResult.error);
     } else if (!emailResult.silent) {
-      showMessage(messageEl, 'warning', 'Shipment created, but email notification failed. You may want to notify the recipient manually.');
+      showMessage(messageEl, 'warning', 'Shipment created, but email notification failed. Recipient may need to be notified manually.');
       console.warn('Email error:', emailResult.error);
     } else {
       showMessage(messageEl, 'success', 'Shipment created successfully!');
@@ -286,6 +307,10 @@ function viewPackage(packageId) {
 function editPackage(packageId) {
   window.location.href = `detail.html?id=${packageId}&edit=true`;
 }
+
+// Expose package actions to inline event handlers in module scope
+window.viewPackage = viewPackage;
+window.editPackage = editPackage;
 
 function handleSearch() {
   const query = document.getElementById('searchInput').value.trim().toLowerCase();

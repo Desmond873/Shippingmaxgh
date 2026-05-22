@@ -10,39 +10,71 @@ let supabaseClient = null;
 
 function initializeSupabase() {
   if (!supabaseClient) {
+    // Verify Supabase CDN is loaded
     if (!window.supabase || !window.supabase.createClient) {
-      console.error('Supabase library not loaded!');
+      console.error('❌ Supabase library not loaded! Make sure it\'s included via CDN.');
+      return null;
+    }
+
+    // Verify CONFIG is available
+    if (typeof CONFIG === 'undefined' || !CONFIG) {
+      console.error('❌ CONFIG not available! Make sure config.js is loaded before app.js');
       return null;
     }
 
     if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) {
-      console.error('Supabase credentials not configured!');
+      console.error('❌ Supabase credentials not configured!', {
+        hasUrl: !!CONFIG.supabaseUrl,
+        hasKey: !!CONFIG.supabaseAnonKey,
+      });
       return null;
     }
 
-    supabaseClient = window.supabase.createClient(
-      CONFIG.supabaseUrl,
-      CONFIG.supabaseAnonKey
-    );
-
-    console.log('Supabase client initialized');
+    try {
+      supabaseClient = window.supabase.createClient(
+        CONFIG.supabaseUrl,
+        CONFIG.supabaseAnonKey
+      );
+      console.log('✅ Supabase client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to create Supabase client:', error);
+      return null;
+    }
   }
   return supabaseClient;
 }
 
-// Initialize immediately
-const supabase = initializeSupabase();
+// Initialize when CONFIG is ready
+function ensureSupabaseInitialized() {
+  if (!supabaseClient) {
+    initializeSupabase();
+  }
+  return supabaseClient;
+}
 
 // Export globally for use in other files
 if (typeof window !== 'undefined') {
-  window.supabaseClient = supabase;
+  window.supabaseClient = null; // Will be set by initializeSupabase
+  
+  // Try to initialize immediately if CONFIG exists
+  if (typeof CONFIG !== 'undefined') {
+    const client = initializeSupabase();
+    window.supabaseClient = client;
+  }
+  
+  // Also expose the initialization function
+  window.ensureSupabaseInitialized = ensureSupabaseInitialized;
 }
 
 // ============ AUTHENTICATION ============
 
 async function checkAuth() {
   try {
-    if (!supabase) return null;
+    const supabase = ensureSupabaseInitialized();
+    if (!supabase) {
+      console.error('Cannot check auth: Supabase not initialized');
+      return null;
+    }
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) {
       console.error('Auth check error:', error);
@@ -66,6 +98,7 @@ async function requireAuth() {
 
 async function signUp(email, password) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const { data, error } = await supabase.auth.signUp({ 
@@ -86,6 +119,7 @@ async function signUp(email, password) {
 
 async function signIn(email, password) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -99,6 +133,7 @@ async function signIn(email, password) {
 
 async function signOut() {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const { error } = await supabase.auth.signOut();
@@ -114,6 +149,7 @@ async function signOut() {
 
 async function getPackages() {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const { data, error } = await supabase
@@ -131,6 +167,7 @@ async function getPackages() {
 
 async function getPackageById(packageId) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const { data, error } = await supabase
@@ -149,6 +186,7 @@ async function getPackageById(packageId) {
 
 async function addPackage(trackingNumber, recipientName, recipientEmail, status, location, shipmentType = null) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const session = await checkAuth();
@@ -160,8 +198,10 @@ async function addPackage(trackingNumber, recipientName, recipientEmail, status,
     }
 
     // Validate email format
-    if (!EmailService.isValidEmail(recipientEmail)) {
-      return { success: false, error: 'Invalid email address format' };
+    if (typeof window.EmailService !== 'undefined' && window.EmailService.isValidEmail) {
+      if (!window.EmailService.isValidEmail(recipientEmail)) {
+        return { success: false, error: 'Invalid email address format' };
+      }
     }
 
     const packageData = {
@@ -203,6 +243,7 @@ async function addPackage(trackingNumber, recipientName, recipientEmail, status,
 
 async function addTrackingHistory(packageId, status, location, notes = null) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     const session = await checkAuth();
@@ -230,6 +271,7 @@ async function addTrackingHistory(packageId, status, location, notes = null) {
 
 async function updatePackageStatus(packageId, newStatus, newLocation, notes = null) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     // Update package
@@ -254,6 +296,7 @@ async function updatePackageStatus(packageId, newStatus, newLocation, notes = nu
 
 async function searchPackages(query) {
   try {
+    const supabase = ensureSupabaseInitialized();
     if (!supabase) return { success: false, error: 'Supabase not initialized' };
     
     if (!query || query.trim() === '') {
@@ -285,6 +328,7 @@ async function searchPackages(query) {
 async function generateTrackingNumber() {
   const year = new Date().getFullYear();
   const maxAttempts = 10;
+  const supabase = ensureSupabaseInitialized();
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Generate random 5-digit number
@@ -294,6 +338,12 @@ async function generateTrackingNumber() {
     const checkDigit = String(randomNum).split('').reduce((sum, d) => sum + parseInt(d), 0) % 10;
     
     const trackingNumber = `SHP-${year}-${randomNum}-${checkDigit}`;
+    
+    // If Supabase not available, return the tracking number anyway
+    if (!supabase) {
+      console.warn('Supabase not available for uniqueness check');
+      return trackingNumber;
+    }
     
     // Check if this number already exists
     const { data, error } = await supabase

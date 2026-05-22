@@ -1,20 +1,83 @@
 {
   "name": "shippingmaxgh-gold-tracker",
   "version": "1.0.0",
+  "description": "Secure shipment tracking system for gold logistics - Production Ready",
   "type": "module",
-
+  "main": "index.html",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve": "python3 -m http.server 8000",
+    "serve:node": "http-server -p 8000 -c-1",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write \"**/*.{js,html,css,md}\"",
+    "check": "npm run lint && npm run format",
+    "test": "echo \"No tests configured yet\" && exit 0",
+    "backup:db": "node scripts/backup-database.js",
+    "deploy": "npm run build && npm run deploy:netlify",
+    "deploy:netlify": "netlify deploy --prod",
+    "deploy:vercel": "vercel --prod"
   },
-
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "@emailjs/browser": "^4.4.1"
+    "@emailjs/browser": "^4.4.1",
+    "@supabase/supabase-js": "^2.45.4"
   },
-
   "devDependencies": {
-    "vite": "^5.4.11"
+    "dotenv": "^16.4.5",
+    "eslint": "^8.57.1",
+    "http-server": "^14.1.1",
+    "netlify-cli": "^26.0.2",
+    "prettier": "^3.3.3",
+    "vercel": "^54.3.0",
+    "vite": "^8.0.14"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/shippingmaxgh-gold.git"
+  },
+  "keywords": [
+    "shipment-tracking",
+    "logistics",
+    "gold-shipping",
+    "supabase",
+    "emailjs"
+  ],
+  "author": "Shippingmaxgh Gold",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/shippingmaxgh-gold/issues"
+  },
+  "homepage": "https://shippingmaxgh.com",
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "printWidth": 100
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-console": "off"
+    }
   }
 }

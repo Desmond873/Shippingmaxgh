@@ -25,24 +25,12 @@
       <form id="loginForm" class="auth-form">
         <div class="form-group">
           <label for="email">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="team@aurexgold.com"
-            required
-          >
+          <input type="email" id="email" name="email" placeholder="team@shippingmaxgh.com" required>
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="••••••••"
-            required
-          >
+          <input type="password" id="password" name="password" placeholder="••••••••" required>
         </div>
 
         <button type="submit" class="btn btn-primary btn-full">Sign In to Portal</button>
@@ -57,24 +45,12 @@
 
         <div class="form-group">
           <label for="signupEmail">Email Address</label>
-          <input
-            type="email"
-            id="signupEmail"
-            name="signupEmail"
-            placeholder="team@aurexgold.com"
-            required
-          >
+          <input type="email" id="signupEmail" name="signupEmail" placeholder="team@shippingmaxgh.com" required>
         </div>
 
         <div class="form-group">
           <label for="signupPassword">Password</label>
-          <input
-            type="password"
-            id="signupPassword"
-            name="signupPassword"
-            placeholder="Minimum 6 characters"
-            required
-          >
+          <input type="password" id="signupPassword" name="signupPassword" placeholder="Minimum 6 characters" required>
         </div>
 
         <button type="button" id="signUpBtn" class="btn btn-primary btn-full">Create Account</button>
@@ -85,47 +61,121 @@
     </div>
   </div>
 
-  <!-- Supabase JS SDK v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- EmailJS -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <!-- CRITICAL: Load in this EXACT order -->
+  
+  <!-- 1. Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  
+  <!-- 2. EmailJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
+  
+  <!-- 3. Config module -->
+  <script type="module" src="config.js"></script>
+  
+  <!-- 4. App module -->
+  <script type="module" src="app.js"></script>
+  
+  <!-- 5. Page logic -->
+  <script type="module">
+    // Wait for everything to load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initPage, 200);
+    });
 
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+    async function initPage() {
+      try {
+        // Verify dependencies
+        if (!window.supabase) {
+          showError('System error: Supabase not loaded');
+          return;
+        }
+        if (!window.CONFIG) {
+          showError('System error: Config not loaded');
+          return;
+        }
 
-  <script>
-    window.onload = function () {
-      const supabaseClient = window.supabase.createClient(
-        CONFIG.supabaseUrl,
-        CONFIG.supabaseAnonKey
-      );
+        // Create client
+        const client = window.supabase.createClient(
+          window.CONFIG.supabaseUrl,
+          window.CONFIG.supabaseAnonKey
+        );
+        window.supabaseClient = client;
 
-   // Sign out any existing session — login required every visit
-supabaseClient.auth.signOut();
+        // Clear session on login page
+        await client.auth.signOut();
 
-      // Login form
+        // Setup forms
+        setupLoginForm(client);
+        setupSignupForm(client);
+        setupToggles();
+
+        console.log('✅ Login page ready');
+      } catch (error) {
+        console.error('Init error:', error);
+        showError('System error. Please refresh.');
+      }
+    }
+
+    function setupLoginForm(client) {
       document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
-        const messageEl = document.getElementById('message');
+        const msg = document.getElementById('message');
 
-        messageEl.className = 'message';
-        messageEl.textContent = 'Authenticating...';
+        if (!email || !password) {
+          showMsg(msg, 'error', 'Please enter email and password');
+          return;
+        }
 
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        showMsg(msg, 'info', 'Authenticating...');
+
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
 
         if (error) {
-          messageEl.className = 'message error';
-          messageEl.textContent = `Error: ${error.message}`;
+          showMsg(msg, 'error', `Error: ${error.message}`);
         } else {
-          messageEl.className = 'message success';
-          messageEl.textContent = 'Access granted. Redirecting to dashboard...';
+          showMsg(msg, 'success', 'Access granted! Redirecting...');
           setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
         }
       });
+    }
 
-      // Toggle signup
+    function setupSignupForm(client) {
+      document.getElementById('signUpBtn').addEventListener('click', async () => {
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const msg = document.getElementById('message');
+
+        if (!email || !password) {
+          showMsg(msg, 'error', 'Please enter email and password');
+          return;
+        }
+
+        if (password.length < 6) {
+          showMsg(msg, 'error', 'Password must be at least 6 characters');
+          return;
+        }
+
+        showMsg(msg, 'info', 'Creating account...');
+
+        const { data, error } = await client.auth.signUp({ email, password });
+
+        if (error) {
+          showMsg(msg, 'error', `Error: ${error.message}`);
+        } else {
+          showMsg(msg, 'success', 'Account created! Please sign in.');
+          setTimeout(() => {
+            document.getElementById('signUpForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('email').value = email;
+            msg.textContent = '';
+          }, 2000);
+        }
+      });
+    }
+
+    function setupToggles() {
       document.getElementById('toggleSignUp').addEventListener('click', () => {
         document.getElementById('loginForm').classList.add('hidden');
         document.getElementById('signUpForm').classList.remove('hidden');
@@ -137,37 +187,17 @@ supabaseClient.auth.signOut();
         document.getElementById('loginForm').classList.remove('hidden');
         document.getElementById('message').textContent = '';
       });
+    }
 
-      // Signup form
-      document.getElementById('signUpBtn').addEventListener('click', async () => {
-        const email = document.getElementById('signupEmail').value.trim();
-        const password = document.getElementById('signupPassword').value;
-        const messageEl = document.getElementById('message');
+    function showMsg(el, type, text) {
+      el.className = `message ${type}`;
+      el.textContent = text;
+    }
 
-        if (password.length < 6) {
-          messageEl.className = 'message error';
-          messageEl.textContent = 'Password must be at least 6 characters.';
-          return;
-        }
-
-        messageEl.textContent = 'Creating account...';
-
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-
-        if (error) {
-          messageEl.className = 'message error';
-          messageEl.textContent = `Error: ${error.message}`;
-        } else {
-          messageEl.className = 'message success';
-          messageEl.textContent = 'Account created! You may now sign in.';
-          setTimeout(() => {
-            document.getElementById('signUpForm').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('email').value = email;
-          }, 2000);
-        }
-      });
-    };
+    function showError(text) {
+      const msg = document.getElementById('message');
+      if (msg) showMsg(msg, 'error', text);
+    }
   </script>
 </body>
 </html>

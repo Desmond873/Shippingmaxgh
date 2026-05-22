@@ -14,50 +14,79 @@ let _supabase = null;
 
 function getClient() {
   if (!_supabase) {
-    // Use global client if available, otherwise create new one
-    _supabase = window.supabaseClient || window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+    // Ensure Supabase is initialized
+    if (typeof window.ensureSupabaseInitialized === 'function') {
+      window.ensureSupabaseInitialized();
+    }
+    
+    // Use global client if available
+    _supabase = window.supabaseClient;
+    
+    // Fallback to direct creation if needed
+    if (!_supabase && typeof window.supabase !== 'undefined' && typeof CONFIG !== 'undefined') {
+      _supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+    }
   }
   return _supabase;
 }
 
 async function initDetail() {
-  const db = getClient();
-  const urlParams = new URLSearchParams(window.location.search);
-  packageId = urlParams.get('id');
-  isEditMode = urlParams.get('edit') === 'true';
-  isPublicMode = urlParams.get('public') === 'true';
+  try {
+    const db = getClient();
+    const urlParams = new URLSearchParams(window.location.search);
+    packageId = urlParams.get('id');
+    isEditMode = urlParams.get('edit') === 'true';
+    isPublicMode = urlParams.get('public') === 'true';
 
-  if (!packageId) {
-    document.getElementById('errorState').classList.remove('hidden');
-    document.getElementById('errorState').textContent = 'No shipment ID provided.';
-    document.getElementById('loadingState').style.display = 'none';
-    return;
-  }
-
-  if (!isPublicMode) {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) {
-      window.location.href = 'index.html';
+    if (!packageId) {
+      document.getElementById('errorState').classList.remove('hidden');
+      document.getElementById('errorState').textContent = 'No shipment ID provided.';
+      document.getElementById('loadingState').style.display = 'none';
       return;
     }
-    document.getElementById('userEmail').textContent = session.user.email;
-  }
 
-  // EmailJS initialization is handled globally, don't re-initialize
-  // Just verify it's available
-  if (!window.emailjs && !isPublicMode) {
-    console.warn('EmailJS not available - notifications may fail');
-  }
+    if (!isPublicMode) {
+      if (!db) {
+        document.getElementById('errorState').classList.remove('hidden');
+        document.getElementById('errorState').textContent = 'Application not initialized. Please refresh the page.';
+        document.getElementById('loadingState').style.display = 'none';
+        return;
+      }
 
-  if (isPublicMode) {
-    applyPublicModeUI();
-  }
+      const { data: { session }, error } = await db.auth.getSession();
+      if (error) {
+        console.error('Auth error:', error);
+        window.location.href = 'index.html';
+        return;
+      }
+      
+      if (!session) {
+        window.location.href = 'index.html';
+        return;
+      }
+      document.getElementById('userEmail').textContent = session.user.email;
+    }
 
-  setupEventListeners();
-  await loadPackageDetails();
+    // EmailJS initialization is handled globally, just verify it's available
+    if (!window.emailjs && !isPublicMode) {
+      console.warn('EmailJS not available - notifications may fail');
+    }
 
-  if (isEditMode && !isPublicMode) {
-    document.getElementById('updateForm').classList.remove('hidden');
+    if (isPublicMode) {
+      applyPublicModeUI();
+    }
+
+    setupEventListeners();
+    await loadPackageDetails();
+
+    if (isEditMode && !isPublicMode) {
+      document.getElementById('updateForm').classList.remove('hidden');
+    }
+  } catch (error) {
+    console.error('Detail page initialization error:', error);
+    document.getElementById('errorState').classList.remove('hidden');
+    document.getElementById('errorState').textContent = `Initialization error: ${error.message}`;
+    document.getElementById('loadingState').style.display = 'none';
   }
 }
 
@@ -216,39 +245,46 @@ async function handleStatusUpdate(e) {
       throw new Error(`History update failed: ${historyError.message}`);
     }
 
-    // Send email notification on every status update
-    // CRITICAL FIX: Use currentPackage properties, not undefined variables
-    if (window.emailjs && CONFIG.emailJsServiceId && CONFIG.emailJsTemplateId) {
+    // Send email notification using centralized service
+    if (typeof window.EmailService !== 'undefined' && window.EmailService) {
       try {
-        const emailParams = {
-          to_email: currentPackage.recipient_email,           // ✅ FIXED: was undefined 'recipientEmail'
-          recipient_name: currentPackage.recipient_name,      // ✅ FIXED: was undefined 'recipientName'
-          tracking_number: currentPackage.tracking_number,    // ✅ FIXED: was undefined 'trackingNumber'
-          status: newStatus,                                  // ✅ FIXED: was undefined 'status'
-          location: newLocation,                              // ✅ FIXED: was undefined 'location'
-          company_name: CONFIG.companyName,
-          current_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-          notes: notes || 'Status updated',
-          public_tracking_link: `${window.location.origin}/detail.html?id=${packageId}&public=true`,
-          message: `Your shipment status has been updated to: ${newStatus}`
+        // Build updated package object for email service
+        const updatedPackage = {
+          ...currentPackage,
+          status: newStatus,
+          location: newLocation
         };
 
-        console.log('Sending status update email with params:', emailParams);
-        
-        const emailResponse = await emailjs.send(
-          CONFIG.emailJsServiceId, 
-          CONFIG.emailJsTemplateId,
-          emailParams
+        // Use centralized email service with proper initialization
+        const emailResult = await window.EmailService.sendStatusUpdate(
+          updatedPackage,
+          newStatus,
+          newLocation,
+          notes || 'Status updated'
         );
-        
-        console.log('Status update email sent successfully:', emailResponse);
+
+        if (emailResult.success) {
+          console.log('✅ Status update email sent successfully');
+        } else if (emailResult.requiresAdminAction) {
+          console.error('⚠️ Email service requires administrator action');
+          // Still show success for the shipment update, but warn about email
+          messageEl.className = 'message warning';
+          messageEl.textContent = 'Shipment updated! ⚠️ Email notification failed - please contact administrator to reconnect Gmail account in EmailJS.';
+        } else if (!emailResult.silent) {
+          console.warn('⚠️ Email notification failed:', emailResult.error);
+          // Show warning but don't block the update
+          messageEl.className = 'message warning';
+          messageEl.textContent = 'Shipment updated! ⚠️ Email notification failed. Recipient may need to be notified manually.';
+        } else {
+          console.log('ℹ️ Email notifications disabled - skipping notification');
+        }
       } catch (emailError) {
-        console.error('Email notification failed:', emailError);
+        console.error('❌ Email notification error:', emailError);
         // Don't fail the entire operation if email fails
         // Just log it and continue
       }
     } else {
-      console.warn('EmailJS not configured - skipping notification');
+      console.warn('⚠️ EmailService not available - email notifications disabled');
     }
 
     messageEl.className = 'message success';

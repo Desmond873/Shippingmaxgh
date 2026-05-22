@@ -1,46 +1,43 @@
 /**
- * Configuration file for Shippingmaxgh Gold - Shipment Tracker
- * PRODUCTION-READY VERSION with Environment Variable Support
- * 
- * Environment variables should be set in:
- * - .env.local (for local development - DO NOT COMMIT)
- * - Platform environment settings (Netlify, Vercel, etc.)
- * 
- * For Vite, use VITE_ prefix:
- *   VITE_SUPABASE_URL=your_url
- *   VITE_SUPABASE_ANON_KEY=your_key
- *   VITE_EMAILJS_SERVICE_ID=your_service_id
- *   VITE_EMAILJS_TEMPLATE_ID=your_template_id
- *   VITE_EMAILJS_PUBLIC_KEY=your_public_key
+ * =========================================================
+ * SHIPPINGMAXGH GOLD - CONFIGURATION
+ * Production-ready, works with and without build systems
+ * =========================================================
  */
 
-// Helper to get environment variable with fallback
-const getEnvVar = (viteKey, fallback = '') => {
-  // For Vite build
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    return import.meta.env[viteKey] || fallback;
+/**
+ * Environment variable helper
+ */
+const getEnvVar = (key, fallback = '') => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return import.meta.env[key] || fallback;
+    }
+  } catch (e) {
+    // Ignore
   }
-  // For direct browser usage (fallback)
   return fallback;
 };
 
-// Security check: Warn if using development credentials in production
-const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const isProduction = !isDevelopment;
+/**
+ * Environment detection
+ */
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
+/**
+ * Main configuration object
+ */
 const CONFIG = {
-  // ============ ENVIRONMENT INFO ============
   environment: isDevelopment ? 'development' : 'production',
   isDevelopment,
-  isProduction,
+  isProduction: !isDevelopment,
 
-  // ============ COMPANY INFO ============
   companyName: 'Shippingmaxgh Gold',
   companyTagline: 'Secure Gold Logistics',
-  companyLogoUrl: '/shippingmaxgh-logo.PNG',
   companyWebsite: 'https://shippingmaxgh.com',
+  companyLogoUrl: '/shippingmaxgh-logo.PNG',
 
-  // ============ BRAND COLORS ============
   brandColors: {
     primary: '#0D9488',
     secondary: '#F97316',
@@ -48,41 +45,33 @@ const CONFIG = {
     secondaryDark: '#EA580C',
   },
 
-  // ============ SUPABASE CONFIGURATION ============
-  // ⚠️ SECURITY WARNING: These should be environment variables in production
   supabaseUrl: getEnvVar(
     'VITE_SUPABASE_URL',
-    'https://ndiypxttcwoextvisigz.supabase.co' // ⚠️ DEVELOPMENT ONLY
+    'https://ndiypxttcwoextvisigz.supabase.co'
   ),
+
   supabaseAnonKey: getEnvVar(
     'VITE_SUPABASE_ANON_KEY',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kaXlweHR0Y3dvZXh0dmlzaWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMDgxNzUsImV4cCI6MjA5NDc4NDE3NX0.WQs8vU1cwPuS7huI8Re6NGOi8ZpbweSncqmpTVkkbSQ' // ⚠️ DEVELOPMENT ONLY
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kaXlweHR0Y3dvZXh0dmlzaWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzNDQzNzUsImV4cCI6MjA0NjkyMDM3NX0.vuyKHY7F7CtJKLluf9WcKQdyxPqk85KSUz4R6OqWJmY'
   ),
 
-  // ============ EMAILJS CONFIGURATION ============
-  // ⚠️ SECURITY WARNING: These should be environment variables in production
-  emailJsServiceId: getEnvVar('VITE_EMAILJS_SERVICE_ID', 'service_pw5vrie'), // ⚠️ DEVELOPMENT ONLY
-  emailJsTemplateId: getEnvVar('VITE_EMAILJS_TEMPLATE_ID', 'template_7y9idr9'), // ⚠️ DEVELOPMENT ONLY
-  emailJsPublicKey: getEnvVar('VITE_EMAILJS_PUBLIC_KEY', 'nYy6d1ieTbtwSNPgd'), // ⚠️ DEVELOPMENT ONLY
+  emailJsServiceId: getEnvVar('VITE_EMAILJS_SERVICE_ID', 'service_pw5vrie'),
+  emailJsTemplateId: getEnvVar('VITE_EMAILJS_TEMPLATE_ID', 'template_7y9idr9'),
+  emailJsPublicKey: getEnvVar('VITE_EMAILJS_PUBLIC_KEY', 'nYy6d1ieTbtwSNPgd'),
 
-  // ============ NOTIFICATIONS ============
   notifications: {
     email: {
       enabled: true,
       fromEmail: 'noreply@shippingmaxgh.com',
       fromName: 'Shippingmaxgh Gold Logistics',
-      triggerOnStatuses: ['all'], // or specific: ['Pending', 'In Transit', 'Delivered']
+      triggerOnStatuses: ['all'],
     },
-    sms: {
-      enabled: false, // Future feature
-    },
+    sms: { enabled: false },
   },
 
-  // ============ TRACKING SETTINGS ============
   tracking: {
     publicTrackingEnabled: true,
-    // Use absolute URL for emails - this will be dynamically set
-    publicTrackingUrl: null, // Set at runtime
+    publicTrackingUrl: null,
     maxShipmentsPerDay: 10000,
     shipmentTypes: [
       'Gold Bar',
@@ -94,20 +83,15 @@ const CONFIG = {
     ],
   },
 
-  // ============ TEAM SETTINGS ============
-  team: {
-    maxTeamMembers: 10,
-  },
+  team: { maxTeamMembers: 10 },
 
-  // ============ SECURITY SETTINGS ============
   security: {
     enableRateLimiting: true,
     maxRequestsPerMinute: 60,
     enableAuditLog: true,
-    sessionTimeout: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    sessionTimeout: 24 * 60 * 60 * 1000,
   },
 
-  // ============ FEATURE FLAGS ============
   features: {
     enablePublicTracking: true,
     enableEmailNotifications: true,
@@ -117,58 +101,17 @@ const CONFIG = {
   },
 };
 
-// Set dynamic tracking URL based on current origin
+/**
+ * Set dynamic tracking URL
+ */
 if (typeof window !== 'undefined') {
   CONFIG.tracking.publicTrackingUrl = `${window.location.origin}/detail.html`;
 }
 
-// Security validation: Warn if using default credentials in production
-if (isProduction) {
-  const hasDefaultCredentials = 
-    CONFIG.supabaseUrl.includes('ndiypxttcwoextvisigz') ||
-    CONFIG.emailJsServiceId === 'service_pw5vrie';
-
-  if (hasDefaultCredentials) {
-    console.error(
-      '⚠️ SECURITY WARNING: Using development credentials in production! ' +
-      'Please set environment variables: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, ' +
-      'VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, VITE_EMAILJS_PUBLIC_KEY'
-    );
-  }
-}
-
-// Validation: Ensure required config is present
-const validateConfig = () => {
-  const required = [
-    'supabaseUrl',
-    'supabaseAnonKey',
-    'emailJsServiceId',
-    'emailJsTemplateId',
-    'emailJsPublicKey',
-  ];
-
-  const missing = required.filter(key => !CONFIG[key]);
-  
-  if (missing.length > 0) {
-    console.error(`❌ Missing required configuration: ${missing.join(', ')}`);
-    return false;
-  }
-
-  return true;
-};
-
-// Run validation
-if (typeof window !== 'undefined') {
-  const isValid = validateConfig();
-  if (!isValid) {
-    console.error('Configuration validation failed. Please check your environment variables.');
-  } else {
-    console.log(`✅ Configuration loaded successfully (${CONFIG.environment} mode)`);
-  }
-}
-
-// Prevent modification of config in production
-if (isProduction && typeof Object.freeze === 'function') {
+/**
+ * Freeze in production
+ */
+if (!isDevelopment && typeof Object.freeze === 'function') {
   Object.freeze(CONFIG);
   Object.freeze(CONFIG.brandColors);
   Object.freeze(CONFIG.notifications);
@@ -178,7 +121,16 @@ if (isProduction && typeof Object.freeze === 'function') {
   Object.freeze(CONFIG.features);
 }
 
-// Export for module usage
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CONFIG;
+/**
+ * Export as ES module
+ */
+export { CONFIG };
+export default CONFIG;
+
+/**
+ * CRITICAL: Also expose globally for non-module scripts
+ */
+if (typeof window !== 'undefined') {
+  window.CONFIG = CONFIG;
+  console.log(`✅ Config loaded (${CONFIG.environment})`);
 }

@@ -1,191 +1,207 @@
 /**
- * Email Notification Service
- * Centralized email sending logic for all shipment notifications
- * 
- * Usage:
- *   await EmailService.sendShipmentCreated(package);
- *   await EmailService.sendStatusUpdate(package, newStatus, newLocation, notes);
+ * =========================================================
+ * EMAIL NOTIFICATION SERVICE
+ * Centralized email sending for shipment notifications
+ * =========================================================
  */
 
 const EmailService = {
-  /**
-   * Check if EmailJS is properly configured and initialized
-   */
-  isConfigured() {
-    return !!(
-      window.emailjs &&
-      CONFIG.notifications?.email?.enabled &&
-      CONFIG.emailJsServiceId &&
-      CONFIG.emailJsTemplateId &&
-      CONFIG.emailJsPublicKey
-    );
+  _initialized: false,
+
+  getConfig() {
+    // Try to get CONFIG from global scope first
+    if (typeof CONFIG !== 'undefined') {
+      return CONFIG;
+    }
+    // Fallback to import (for module environments)
+    try {
+      return CONFIG;
+    } catch (e) {
+      return null;
+    }
   },
 
-  /**
-   * Initialize EmailJS (should be called once on app load)
-   */
+  isConfigured() {
+    const config = this.getConfig();
+    
+    if (!config) {
+      console.warn('⚠️  CONFIG not available');
+      return false;
+    }
+
+    const hasEmailJs = !!(window.emailjs);
+    const hasServiceId = !!(config.emailJsServiceId);
+    const hasTemplateId = !!(config.emailJsTemplateId);
+    const hasPublicKey = !!(config.emailJsPublicKey);
+    const isEnabled = !!(config.notifications?.email?.enabled !== false);
+
+    return hasEmailJs && hasServiceId && hasTemplateId && hasPublicKey && isEnabled;
+  },
+
   initialize() {
+    if (this._initialized) {
+      return true; // Already initialized
+    }
+
+    const config = this.getConfig();
+    
+    if (!config) {
+      console.warn('⚠️  CONFIG not loaded yet - EmailJS initialization deferred');
+      return false;
+    }
+
     if (!this.isConfigured()) {
-      console.warn('EmailJS not configured - notifications will be disabled');
+      console.warn('⚠️  EmailJS not properly configured:', {
+        hasEmailJs: !!window.emailjs,
+        hasServiceId: !!config.emailJsServiceId,
+        hasTemplateId: !!config.emailJsTemplateId,
+        hasPublicKey: !!config.emailJsPublicKey,
+        isEnabled: config.notifications?.email?.enabled !== false,
+      });
       return false;
     }
 
     try {
       if (window.emailjs && typeof window.emailjs.init === 'function') {
-        window.emailjs.init(CONFIG.emailJsPublicKey);
-        console.log('EmailJS initialized successfully');
+        window.emailjs.init(config.emailJsPublicKey);
+        this._initialized = true;
+        console.log('✅ EmailJS initialized successfully');
         return true;
+      } else {
+        console.warn('⚠️  EmailJS library not found or init method unavailable');
+        return false;
       }
     } catch (error) {
-      console.error('EmailJS initialization failed:', error);
+      console.error('❌ EmailJS initialization failed:', error);
       return false;
     }
-    return false;
   },
 
-  /**
-   * Build email template parameters
-   */
   buildParams(packageData, eventType = 'created', additionalData = {}) {
+    const config = this.getConfig();
     const baseParams = {
       to_email: packageData.recipient_email,
       recipient_name: packageData.recipient_name,
       tracking_number: packageData.tracking_number,
       status: packageData.status,
       location: packageData.location,
-      company_name: CONFIG.companyName || 'Shippingmaxgh Gold',
-      current_date: new Date().toLocaleDateString('en-GB', { 
-        day: 'numeric', 
-        month: 'short', 
-        year: 'numeric' 
+      company_name: (config?.companyName) || 'Shippingmaxgh Gold',
+      current_date: new Date().toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
       }),
       public_tracking_link: `${window.location.origin}/detail.html?id=${packageData.id}&public=true`,
     };
 
-    // Add event-specific message
     if (eventType === 'created') {
-      baseParams.message = 'Your gold shipment has been successfully registered in our system.';
-      baseParams.subject = `Shipment Created - Tracking #${packageData.tracking_number}`;
-      baseParams.notes = additionalData.notes || 'New shipment registered';
+      baseParams.message = 'Your gold shipment has been successfully registered.';
+      baseParams.subject = `Shipment Created - #${packageData.tracking_number}`;
+      baseParams.notes = additionalData.notes || 'New shipment';
     } else if (eventType === 'status_updated') {
-      baseParams.message = `Your shipment status has been updated to: ${packageData.status}`;
-      baseParams.subject = `Shipment Status Update - ${packageData.status} - Tracking #${packageData.tracking_number}`;
+      baseParams.message = `Status updated to: ${packageData.status}`;
+      baseParams.subject = `Status Update - ${packageData.status} - #${packageData.tracking_number}`;
       baseParams.notes = additionalData.notes || 'Status updated';
-    } else {
-      baseParams.message = 'Update on your shipment.';
-      baseParams.subject = `Shipment Notification - Tracking #${packageData.tracking_number}`;
-      baseParams.notes = additionalData.notes || '';
     }
 
     return baseParams;
   },
 
-  /**
-   * Send email notification
-   */
   async send(params) {
+    const config = this.getConfig();
+
+    // Ensure initialized before sending
+    if (!this._initialized) {
+      this.initialize();
+    }
+
     if (!this.isConfigured()) {
-      console.log('Email notifications are disabled or not configured');
       return { 
         success: false, 
-        error: 'Email service not configured',
-        silent: true // Don't show error to user
+        error: 'Email service not properly configured. Check console for details.',
+        silent: true 
       };
     }
 
     try {
-      console.log('Sending email notification:', {
-        to: params.to_email,
-        tracking: params.tracking_number,
-        status: params.status
-      });
-
+      console.log('📧 Sending email to:', params.to_email);
+      console.log('   Service ID:', config.emailJsServiceId);
+      console.log('   Template ID:', config.emailJsTemplateId);
+      
       const response = await window.emailjs.send(
-        CONFIG.emailJsServiceId,
-        CONFIG.emailJsTemplateId,
+        config.emailJsServiceId,
+        config.emailJsTemplateId,
         params
       );
-
-      console.log('Email sent successfully:', response);
-      return { 
-        success: true, 
-        data: response,
-        message: 'Notification sent successfully'
-      };
+      
+      console.log('✅ Email sent successfully:', response.status);
+      return { success: true, data: response };
     } catch (error) {
-      console.error('Email sending failed:', error);
+      const errorMsg = error.text || error.message || JSON.stringify(error);
+      
+      // Handle specific EmailJS errors
+      if (errorMsg.includes('Invalid grant') || errorMsg.includes('Gmail_API')) {
+        console.error('❌ EmailJS Gmail Authorization Failed');
+        console.error('   Error:', errorMsg);
+        console.error('   Fix: Reconnect your Gmail account in the EmailJS dashboard:');
+        console.error('   1. Go to EmailJS Dashboard → Email Services');
+        console.error('   2. Click on the Gmail service');
+        console.error('   3. Click "Reconnect Account"');
+        console.error('   4. Authorize the connection');
+        
+        return { 
+          success: false, 
+          error: 'EmailJS Gmail account needs to be reconnected. Contact administrator.',
+          details: errorMsg,
+          requiresAdminAction: true
+        };
+      }
+      
+      if (errorMsg.includes('Precondition Failed')) {
+        console.error('❌ EmailJS Request Failed (412 Precondition Failed)');
+        console.error('   This usually means the service or template is misconfigured');
+        console.error('   Verify:');
+        console.error('   - Service ID:', config.emailJsServiceId);
+        console.error('   - Template ID:', config.emailJsTemplateId);
+        console.error('   - Public Key:', config.emailJsPublicKey.substring(0, 10) + '...');
+      }
+      
+      console.error('❌ Email send failed:', errorMsg);
       return { 
         success: false, 
-        error: error.text || error.message || 'Email sending failed',
-        details: error
+        error: errorMsg,
+        details: error,
+        requiresAdminAction: errorMsg.includes('Invalid grant')
       };
     }
   },
 
-  /**
-   * Send notification when a new shipment is created
-   */
   async sendShipmentCreated(packageData, notes = '') {
     const params = this.buildParams(packageData, 'created', { notes });
     return await this.send(params);
   },
 
-  /**
-   * Send notification when shipment status is updated
-   */
   async sendStatusUpdate(packageData, newStatus, newLocation, notes = '') {
-    const updatedPackage = {
-      ...packageData,
-      status: newStatus,
-      location: newLocation
-    };
+    const updatedPackage = { ...packageData, status: newStatus, location: newLocation };
     const params = this.buildParams(updatedPackage, 'status_updated', { notes });
     return await this.send(params);
   },
 
-  /**
-   * Validate email address format
-   */
   isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   },
-
-  /**
-   * Get user-friendly error message
-   */
-  getUserFriendlyError(error) {
-    if (!error) return 'Unknown error occurred';
-    
-    const errorMap = {
-      'Invalid email': 'The recipient email address is invalid',
-      'Service not found': 'Email service configuration error',
-      'Template not found': 'Email template configuration error',
-      'Rate limit exceeded': 'Email quota exceeded. Please try again later.',
-      'Network error': 'Network connection failed. Please check your internet connection.',
-    };
-
-    // Check for known error patterns
-    for (const [key, message] of Object.entries(errorMap)) {
-      if (error.includes(key) || error === key) {
-        return message;
-      }
-    }
-
-    return 'Failed to send notification. The shipment was saved, but email could not be sent.';
-  }
 };
 
-// Initialize on script load
+// Initialize
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    EmailService.initialize();
-  });
+  document.addEventListener('DOMContentLoaded', () => EmailService.initialize());
 } else {
   EmailService.initialize();
 }
 
-// Export for use in other modules
+// Export globally
 if (typeof window !== 'undefined') {
   window.EmailService = EmailService;
 }
+
+export default EmailService;
